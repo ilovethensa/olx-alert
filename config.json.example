@@ -1,0 +1,7 @@
+{
+    "olx_command": "olx search something",
+    "database_file": "olx_items.db",
+    "include_filters": ["3060"],
+    "exclude_filters": ["broken", "parts only"],
+    "webhook_url": ""
+}

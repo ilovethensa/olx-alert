@@ -10,7 +10,7 @@ import schedule
 class OLXMonitor:
     def __init__(self, config_file_path="config.json"):
         self.config_file_path = config_file_path
-        self.OLX_COMMAND, self.DATABASE_FILE, self.INCLUDE_FILTERS, self.EXCLUDE_FILTERS = self.read_config()
+        self.OLX_COMMAND, self.DATABASE_FILE, self.INCLUDE_FILTERS, self.EXCLUDE_FILTERS, self.WEBHOOK_URL = self.read_config()
 
     def read_config(self):
         with open(self.config_file_path, "r") as config_file:
@@ -20,6 +20,7 @@ class OLXMonitor:
                 config_data.get("database_file"),
                 config_data.get("include_filters", []),
                 config_data.get("exclude_filters", []),
+                config_data.get("webhook_url"),  # New line to read the webhook URL
             )
 
     def create_table(self):
@@ -61,7 +62,7 @@ class OLXMonitor:
         for item in items:
             if self._is_item_allowed(item):
                 try:
-                    item['price'] = item['price'].replace(".css-1c0ed4l{display:inline-block;}.css-1ojrdd5{height:24px;width:24px;margin-right:8px;color:#002F34;}", "")
+                    item['price'] = item['price'].replace("..css-1vxklie{color:#7F9799;font-size:12px;line-height:16px;font-weight:100;display:block;width:100%;text-align:right;}По договаряне", "").replace(".css-1c0ed4l{display:inline-block;}.css-1ojrdd5{height:24px;width:24px;margin-right:8px;color:#002F34;}", "")
                     cursor.execute('''
                         INSERT INTO olx_items (url, title, price, location, date)
                         VALUES (?, ?, ?, ?, ?)
@@ -114,22 +115,34 @@ class OLXMonitor:
                 self.insert_new_items(new_items)
                 latest_json_urls = set(item['url'] for item in filtered_items)
                 self.remove_missing_items(latest_json_urls)
-                self.send_discord_webhook_notification(new_items)
+                self.send_discord_webhook_notification(new_items, 1)
+
+            # Identify items that are no longer available
+            removed_items = [item for item in existing_urls if item not in set(item['url'] for item in filtered_items)]
+
+            if removed_items:
+                print("Items got bought!")
+                self.remove_missing_items(existing_urls)
+                self.send_discord_webhook_notification(removed_items, 0)
 
             connection.close()
 
-    def send_discord_webhook_notification(self, new_items):
-        webhook_url = ""
+    def send_discord_webhook_notification(self, items, notification_type):
+        webhook_url = self.WEBHOOK_URL
+        if notification_type == 1:
+            message = "New item/s detected!"
+        else:
+            message = "Item/s got bought!"
 
         payload = {
-            "content": "New items detected!",
+            "content": message,
             "embeds": [
                 {
-                    "title": "New Items",
-                    "color": 16711680,
+                    "title": "Items",
+                    "color": 16711680 if notification_type == 1 else 65280,
                     "fields": [
                         {"name": f"Item {index + 1}", "value": f"[{item['title']}]({item['url']})\nPrice: {item['price']}\nLocation: {item['location']}\nDate: {item['date']}", "inline": False}
-                        for index, item in enumerate(new_items)
+                        for index, item in enumerate(items)
                     ]
                 }
             ]
