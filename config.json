@@ -1,0 +1,6 @@
+{
+    "olx_command": "/home/tht/.local/share/cargo/bin/olx search -q \"Rtx 3060\" -m 200 -x 500 -c elektronika/kompyutrni-aksesoari-chasti/aksesoari-chasti",
+    "database_file": "olx_items.db",
+    "include_filters": ["3060"],
+    "exclude_filters": ["broken", "parts only"]
+}
